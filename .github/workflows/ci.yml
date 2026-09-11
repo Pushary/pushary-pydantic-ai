@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install package and checks
+        run: python -m pip install ".[test]" build twine
+      - name: Test native deferred reviews
+        run: python -m pytest tests
+      - name: Check types
+        run: python -m mypy
+      - name: Run without a model or phone
+        run: python examples/refund.py
+      - name: Build and validate artifacts
+        run: |
+          python -m build
+          python -m twine check dist/*
+      - name: Exercise the wheel in a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/pydantic-wheel"
+          "$RUNNER_TEMP/pydantic-wheel/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/pydantic-wheel/bin/python" -m pip check
+          "$RUNNER_TEMP/pydantic-wheel/bin/python" -I examples/refund.py

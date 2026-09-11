@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pushary-pydantic-ai"
+version = "0.1.0"
+description = "Phone approvals and human answers for Pydantic AI deferred tools."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Pushary", email = "business@pushary.com" }]
+keywords = ["pydantic-ai", "human-in-the-loop", "ai-agents", "approvals"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+dependencies = ["pushary>=2.1.0,<3", "pydantic-ai-slim>=2.42,<3", "pydantic>=2.12,<3"]
+
+[project.urls]
+Homepage = "https://pushary.com"
+Documentation = "https://pushary.com/docs/agents/adapters"
+Repository = "https://github.com/Pushary/pushary-pydantic-ai"
+Issues = "https://github.com/Pushary/pushary-pydantic-ai/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "mypy>=1.15"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pushary_pydantic_ai"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pushary_pydantic_ai", "README.md", "LICENSE", "tests", "examples"]
+
+[tool.mypy]
+strict = true
+files = ["src/pushary_pydantic_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
