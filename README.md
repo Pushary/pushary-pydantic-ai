@@ -4,13 +4,13 @@ Your Pydantic AI agent asks. Your customer answers on their phone. The agent con
 
 Native tool approvals and `confirm`, `select`, and `input` questions, using Pydantic AI's deferred tools. Pushary's native mobile app is the main customer experience; existing Slack delivery and legacy web compatibility remain available. The adapter creates a decision and returns immediately, so the human wait holds no worker open.
 
-This package is prepared for its first release and is not yet published. From the adapter package directory, install from this checkout:
+Version 0.1.0 is [published on PyPI](https://pypi.org/project/pushary-pydantic-ai/). Install it with:
 
 ```sh
-uv pip install -e .
+uv pip install pushary-pydantic-ai
 ```
 
-Requires Python 3.10+, Pydantic AI 2.42+, and the public Pushary SDK 2.1+. The source install resolves the released core SDK from PyPI. Model provider extras belong to your application; the adapter depends on the slim framework package.
+For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, and the public Pushary SDK 2.1+. Model provider extras belong to your application; the adapter depends on the slim framework package.
 
 ## Approve a tool before it runs
 
@@ -105,13 +105,3 @@ Official framework references: [deferred tools](https://pydantic.dev/docs/ai/too
 ## Source and CI
 
 The monorepo owns this package and its public-mirror workflow. The mirror CI tests Python 3.10 and 3.13, runs the native deferred-review suite, strict typing and the model-free example, builds the wheel and source archive, and runs the installed wheel in a clean environment. CI never contacts a phone or model provider. It does not publish the package.
-
-## Release prerequisites
-
-This candidate is wired into `release-pypi.yml` (including its manual dry run) and
-the existing adapter drift check. Publish `pushary>=2.1.0` before this package.
-Before the first upload, a PyPI project owner must configure a pending trusted
-publisher for `pushary-pydantic-ai`: GitHub owner `aadilghani1`, repository
-`pushary`, workflow `release-pypi.yml`, with no environment name. This setup has
-not been performed by this change. Do not publish until it is configured and the
-workflow dry run passes; adding the matrix entry alone does not authorize a release.
