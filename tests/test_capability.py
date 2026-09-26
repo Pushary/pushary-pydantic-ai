@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
@@ -20,7 +22,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
-from pushary_pydantic_ai import ARGUMENTS_TOO_LONG, PusharyApprovals, pushary_tool
+from pushary_pydantic_ai import ARGUMENTS_TOO_LONG, PusharyApprovals, _wait_in_thread, pushary_tool
 
 models.ALLOW_MODEL_REQUESTS = False
 API_KEY = "pk_test.sk_test"
@@ -388,3 +390,55 @@ def test_run_stream_ends_before_approvals_so_the_tool_never_runs() -> None:
     with phone(["yes"]) as requests:
         assert anyio.run(scenario) == []
     assert decisions(requests) == []
+
+
+def test_cancelled_waits_keep_their_workers_and_cancelled_queued_calls_never_start() -> None:
+    release = threading.Event()
+    lock = threading.Lock()
+    started = 0
+
+    def blocked() -> None:
+        nonlocal started
+        with lock:
+            started += 1
+        release.wait(10)
+
+    async def scenario() -> None:
+        try:
+            for index in range(100):
+                task = asyncio.create_task(_wait_in_thread(blocked))
+                with anyio.fail_after(2):
+                    while started <= index:
+                        await asyncio.sleep(0.001)
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+            queued = asyncio.create_task(_wait_in_thread(blocked))
+            await asyncio.sleep(0.05)
+            assert started == 100
+            queued.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await queued
+            release.set()
+            await _wait_in_thread(lambda: None)
+            assert started == 100
+        finally:
+            release.set()
+
+    asyncio.run(scenario())
+
+
+def test_worker_receives_the_callers_context_without_changing_it() -> None:
+    request_id: ContextVar[str] = ContextVar("request_id", default="unset")
+
+    def worker() -> str:
+        received = request_id.get()
+        request_id.set("worker-only")
+        return received
+
+    async def scenario() -> None:
+        request_id.set("customer-request")
+        assert await _wait_in_thread(worker) == "customer-request"
+        assert request_id.get() == "customer-request"
+
+    asyncio.run(scenario())

@@ -18,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Typing :: Typed",
 ]
-dependencies = ["pushary>=2.2.0,<3", "pydantic-ai-slim>=2.42,<3", "pydantic>=2.12,<3", "anyio>=4.7,<5"]
+dependencies = ["pushary>=2.2.0,<3", "pydantic-ai-slim>=2.42,<3", "pydantic>=2.12,<3"]
 
 [project.urls]
 Homepage = "https://pushary.com"
@@ -27,7 +27,7 @@ Repository = "https://github.com/Pushary/pushary-pydantic-ai"
 Issues = "https://github.com/Pushary/pushary-pydantic-ai/issues"
 
 [project.optional-dependencies]
-test = ["pytest>=8", "mypy>=1.15"]
+test = ["pytest>=8", "mypy>=1.15", "anyio>=4.7,<5"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pushary_pydantic_ai"]

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Annotated, Any, Literal, TypeVar
 
-import anyio
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator, model_validator
 from pydantic_ai import (
     CallDeferred, DeferredToolRequests, DeferredToolResults, ModelRetry, Tool, ToolApproved, ToolDenied,
@@ -274,11 +276,11 @@ _Result = TypeVar("_Result")
 ExternalIdResolver = Callable[[RunContext[AgentDepsT]], "str | None | Awaitable[str | None]"]
 _SettledStatus = Literal["answered", "expired", "cancelled"]
 _MAX_CONCURRENT_WAITS = 100
-_waits = anyio.CapacityLimiter(_MAX_CONCURRENT_WAITS)
+_waits = ThreadPoolExecutor(max_workers=_MAX_CONCURRENT_WAITS, thread_name_prefix="pushary-approval")
 
 
 async def _wait_in_thread(function: Callable[[], _Result]) -> _Result:
-    return await anyio.to_thread.run_sync(function, abandon_on_cancel=True, limiter=_waits)
+    return await asyncio.get_running_loop().run_in_executor(_waits, copy_context().run, function)
 
 
 def _settled_status(status: DecisionStatus) -> _SettledStatus:

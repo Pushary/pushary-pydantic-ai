@@ -53,7 +53,7 @@ The resolver can also be async.
 
 It works with `run`, `run_sync`, `iter` and `run_stream_events`. `run_stream` stops at the first deferred call before any capability sees it, so the tool never runs there; stream with `run_stream_events` instead. Under Pydantic AI's [durable execution](https://pydantic.dev/docs/ai/capabilities/durable_execution/overview/) the phone wait runs as a durable operation, outside workflow code. On Temporal, keep the activity timeout (60 seconds by default) longer than `timeout_seconds`.
 
-The Pushary Python SDK is synchronous, so each wait runs on a worker thread from a pool of 100 kept for these waits. A waiting approval never takes a thread your app needs for its own sync code. Cancelling a run stops the wait at once, and the prompt expires on its own.
+The Pushary Python SDK is synchronous, so each wait runs on a worker thread from a pool of 100 kept for these waits. A waiting approval never takes a thread your app needs for its own sync code. Cancelling a run stops the caller waiting at once. An in-flight SDK request keeps its worker until it finishes or times out; the prompt expires on its own. Cancelled queued requests never start.
 
 Pydantic AI's own docs: [Deferred tools](https://pydantic.dev/docs/ai/tools-toolsets/deferred-tools/).
 
