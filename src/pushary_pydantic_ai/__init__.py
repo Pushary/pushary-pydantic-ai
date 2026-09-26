@@ -9,7 +9,7 @@ from pydantic_ai.messages import ToolCallPart
 from pushary import DecisionStatus, DecisionType
 from pushary.adapters import AdapterKernel, decision_fingerprint, is_affirmative
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "HumanQuestion", "HumanAnswer", "PendingReview", "ReviewBatch",
     "pushary_tool", "create_reviews", "resolve_reviews", "connect",
