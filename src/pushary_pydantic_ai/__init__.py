@@ -22,7 +22,7 @@ from pushary.adapters import (
     render_approval_question,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "HumanQuestion", "HumanAnswer", "PendingReview", "ReviewBatch", "PusharyApprovals",
     "pushary_tool", "create_reviews", "resolve_reviews", "connect",
