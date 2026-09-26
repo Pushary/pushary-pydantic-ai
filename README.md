@@ -1,22 +1,27 @@
 # pushary-pydantic-ai
 
-Your Pydantic AI agent asks. Your customer answers on their phone. The agent continues with the recorded answer.
+Phone approvals for Pydantic AI agents. Your agent asks, your user taps Approve or Deny.
 
-Native tool approvals and `confirm`, `select`, and `input` questions, using Pydantic AI's deferred tools. Pushary's native mobile app is the main customer experience; existing Slack delivery and legacy web compatibility remain available. The adapter creates a decision and returns immediately, so the human wait holds no worker open.
+[Published on PyPI](https://pypi.org/project/pushary-pydantic-ai/) · [Integration guide](https://pushary.com/docs/agents/adapters?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme)
 
-Version 0.1.0 is [published on PyPI](https://pypi.org/project/pushary-pydantic-ai/). Install it with:
+## What you need
+
+- A Pushary Partner plan, from $99 a month. [Start the trial](https://pushary.com/sign-up?from=agent&plan=partner&utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=partner-start).
+- An API key from [Partner onboarding](https://pushary.com/onboarding/partner), set as `PUSHARY_API_KEY`.
+- Your users install the free Pushary app ([iPhone](https://apps.apple.com/us/app/pushary/id6785677563), [Android](https://play.google.com/store/apps/details?id=com.pushary.app)). They never sign up or pay.
+
+## Quick start
 
 ```sh
 uv pip install pushary-pydantic-ai
+export PUSHARY_API_KEY=pk_xxx.sk_xxx
 ```
-
-For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, and the public Pushary SDK 2.1+. Model provider extras belong to your application; the adapter depends on the slim framework package.
-
-## Approve a tool before it runs
 
 ```python
 from pydantic_ai import Agent, DeferredToolRequests
-from pushary_pydantic_ai import create_reviews, resolve_reviews
+from pushary_pydantic_ai import connect, create_reviews
+
+link = connect(authenticated_customer.id)  # once per user: show them this link
 
 agent = Agent("openai:gpt-4.1-mini", output_type=[str, DeferredToolRequests])
 
@@ -26,13 +31,14 @@ def issue_refund(order_id: str) -> str:
 
 result = await agent.run("Refund order_123")
 if isinstance(result.output, DeferredToolRequests):
-    batch = create_reviews(
-        result.output,
-        external_id=authenticated_customer.id,
-        run_id=result.run_id,
-        agent_name="Support",
-    )
+    batch = create_reviews(result.output, external_id=authenticated_customer.id, run_id=result.run_id)
 ```
+
+It covers native tool approvals and `confirm`, `select` and `input` questions, using Pydantic AI's deferred tools. Your users answer in the Pushary app. The adapter creates a decision and returns immediately, so the human wait holds no worker open.
+
+Pydantic AI's own docs: [Deferred tools](https://pydantic.dev/docs/ai/tools-toolsets/deferred-tools/).
+
+## Approve a tool before it runs
 
 `refund_order_once` is your application's idempotent business operation. `authenticated_customer` comes from your server's authentication, never a model argument. Set `PUSHARY_API_KEY` on the server or pass `api_key=` to the helpers. Live end-user delivery requires Partner access and an enrolled customer; `connect(external_id)` returns the SDK's single-use enrollment link. Use a customer-bound key when available and keep it scoped to that same customer.
 
@@ -41,7 +47,7 @@ Save the original run's message history, deferred requests, and `batch.model_dum
 Later, from a worker or callback handler:
 
 ```python
-from pushary_pydantic_ai import ReviewBatch
+from pushary_pydantic_ai import ReviewBatch, resolve_reviews
 
 batch = ReviewBatch.model_validate_json(saved_batch_json)
 answers = resolve_reviews(saved_requests, batch)
@@ -86,7 +92,7 @@ The model sees these validated input fields:
 
 The same create/resolve flow handles these requests. `external_id` is supplied by trusted server code when creating the batch and is absent from the tool schema. Returned question results contain `kind`, `status`, `value`, and `approved`; `approved` is `null` for select/input. A written "yes" is data, not authorization to run a different tool. The model may choose not to call `ask_human`, so use `requires_approval=True` on tools that must be gated.
 
-Only native approval requests and external calls named `ask_human` are accepted. Other external tools are rejected before creating any decisions. Selection questions require 2–20 unique options. Questions are limited to 500 characters. Full approval arguments are shown in decision context; inputs that exceed the context's 2,000-character limit are rejected rather than silently hidden. Do not send secrets in tool arguments being reviewed.
+Only native approval requests and external calls named `ask_human` are accepted. Other external tools are rejected before creating any decisions. Selection questions require 2-20 unique options. Questions are limited to 500 characters. Full approval arguments are shown in decision context; inputs that exceed the context's 2,000-character limit are rejected rather than silently hidden. Do not send secrets in tool arguments being reviewed.
 
 ## Run without a model or phone
 
@@ -105,3 +111,7 @@ Official framework references: [deferred tools](https://pydantic.dev/docs/ai/too
 ## Source and CI
 
 The monorepo owns this package and its public-mirror workflow. The mirror CI tests Python 3.10 and 3.13, runs the native deferred-review suite, strict typing and the model-free example, builds the wheel and source archive, and runs the installed wheel in a clean environment. CI never contacts a phone or model provider. It does not publish the package.
+
+## Runtime requirements
+
+For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, and the public Pushary SDK 2.1+. Model provider extras belong to your application; the adapter depends on the slim framework package.

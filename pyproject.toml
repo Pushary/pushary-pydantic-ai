@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "pushary-pydantic-ai"
 version = "0.1.0"
-description = "Phone approvals and human answers for Pydantic AI deferred tools."
+description = "Phone approvals for Pydantic AI agents. Your agent asks, your user taps Approve or Deny."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Pushary", email = "business@pushary.com" }]
-keywords = ["pydantic-ai", "human-in-the-loop", "ai-agents", "approvals"]
+keywords = ["pydantic-ai", "human-in-the-loop", "ai-agents", "approvals", "approval", "tool-approval"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
