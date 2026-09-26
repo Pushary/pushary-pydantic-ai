@@ -18,10 +18,52 @@ export PUSHARY_API_KEY=pk_xxx.sk_xxx
 ```
 
 ```python
-from pydantic_ai import Agent, DeferredToolRequests
-from pushary_pydantic_ai import connect, create_reviews
+from pydantic_ai import Agent
+from pushary_pydantic_ai import PusharyApprovals, connect
 
 link = connect(authenticated_customer.id)  # once per user: show them this link
+
+agent = Agent(
+    "openai:gpt-4.1-mini",
+    capabilities=[PusharyApprovals(external_id=authenticated_customer.id)],
+)
+
+@agent.tool_plain(requires_approval=True)
+def issue_refund(order_id: str) -> str:
+    return refund_order_once(order_id)
+
+result = await agent.run("Refund order_123")
+```
+
+`PusharyApprovals` is a Pydantic AI [capability](https://pydantic.dev/docs/ai/capabilities/overview/). When the model calls a tool marked `requires_approval=True`, it asks your user on their phone and waits. Approve runs the tool in the same run. Deny, or no answer in time, returns a denial the model can read, and the tool does not run. Several approvals in one turn are asked one after another.
+
+The notification shows the tool name and a short view of its arguments. The decision page shows every argument. A call whose arguments come to more than 2,000 characters is denied without asking anyone, because the approver could not read all of it.
+
+Rules on your site answer first when the key can read them, and can allow or deny without paging anyone. Set `policy=False` to always ask a person. Add `pushary_tool()` to the agent's tools and the same capability answers the model's `ask_human` questions too. Other deferred calls are left for your code.
+
+For a multi-tenant agent, resolve the person per run from trusted deps, never from the model's tool input:
+
+```python
+PusharyApprovals(external_id=lambda ctx: ctx.deps.user_id)
+```
+
+The resolver can also be async.
+
+`timeout_seconds` is how long the run waits for an answer, 55 by default. The prompt expires with the wait, so a late tap cannot approve a call that was already denied. Pushary keeps a prompt open for at least one minute. The other options are `agent_name`, `require_reachable`, `policy`, `api_key` and `base_url`.
+
+It works with `run`, `run_sync`, `iter` and `run_stream_events`. `run_stream` stops at the first deferred call before any capability sees it, so the tool never runs there; stream with `run_stream_events` instead. Under Pydantic AI's [durable execution](https://pydantic.dev/docs/ai/capabilities/durable_execution/overview/) the phone wait runs as a durable operation, outside workflow code. On Temporal, keep the activity timeout (60 seconds by default) longer than `timeout_seconds`.
+
+The Pushary Python SDK is synchronous, so each wait runs on a worker thread from a pool of 100 kept for these waits. A waiting approval never takes a thread your app needs for its own sync code. Cancelling a run stops the wait at once, and the prompt expires on its own.
+
+Pydantic AI's own docs: [Deferred tools](https://pydantic.dev/docs/ai/tools-toolsets/deferred-tools/).
+
+## Wait without holding a worker
+
+The capability holds the run open while it waits. To wait minutes or hours instead, let the run pause and resume it later:
+
+```python
+from pydantic_ai import Agent, DeferredToolRequests
+from pushary_pydantic_ai import create_reviews
 
 agent = Agent("openai:gpt-4.1-mini", output_type=[str, DeferredToolRequests])
 
@@ -34,11 +76,7 @@ if isinstance(result.output, DeferredToolRequests):
     batch = create_reviews(result.output, external_id=authenticated_customer.id, run_id=result.run_id)
 ```
 
-It covers native tool approvals and `confirm`, `select` and `input` questions, using Pydantic AI's deferred tools. Your users answer in the Pushary app. The adapter creates a decision and returns immediately, so the human wait holds no worker open.
-
-Pydantic AI's own docs: [Deferred tools](https://pydantic.dev/docs/ai/tools-toolsets/deferred-tools/).
-
-## Approve a tool before it runs
+`create_reviews` creates a decision for each deferred call and returns immediately, so the human wait holds no worker open.
 
 `refund_order_once` is your application's idempotent business operation. `authenticated_customer` comes from your server's authentication, never a model argument. Set `PUSHARY_API_KEY` on the server or pass `api_key=` to the helpers. Live end-user delivery requires Partner access and an enrolled customer; `connect(external_id)` returns the SDK's single-use enrollment link. Use a customer-bound key when available and keep it scoped to that same customer.
 
@@ -90,9 +128,9 @@ The model sees these validated input fields:
 }
 ```
 
-The same create/resolve flow handles these requests. `external_id` is supplied by trusted server code when creating the batch and is absent from the tool schema. Returned question results contain `kind`, `status`, `value`, and `approved`; `approved` is `null` for select/input. A written "yes" is data, not authorization to run a different tool. The model may choose not to call `ask_human`, so use `requires_approval=True` on tools that must be gated.
+`PusharyApprovals` answers these inline, and the create/resolve flow handles them durably. `external_id` is supplied by trusted server code when creating the batch and is absent from the tool schema. Returned question results contain `kind`, `status`, `value`, and `approved`; `approved` is `null` for select/input. A written "yes" is data, not authorization to run a different tool. The model may choose not to call `ask_human`, so use `requires_approval=True` on tools that must be gated.
 
-Only native approval requests and external calls named `ask_human` are accepted. Other external tools are rejected before creating any decisions. Selection questions require 2-20 unique options. Questions are limited to 500 characters. Full approval arguments are shown in decision context; inputs that exceed the context's 2,000-character limit are rejected rather than silently hidden. Do not send secrets in tool arguments being reviewed.
+In the durable flow, only native approval requests and external calls named `ask_human` are accepted, and other external tools are rejected before creating any decisions. Selection questions require 2-20 unique options. Questions are limited to 500 characters. Full approval arguments are shown in decision context; inputs that exceed the context's 2,000-character limit are rejected rather than silently hidden. Do not send secrets in tool arguments being reviewed.
 
 ## Run without a model or phone
 
@@ -114,4 +152,4 @@ The monorepo owns this package and its public-mirror workflow. The mirror CI tes
 
 ## Runtime requirements
 
-For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, and the public Pushary SDK 2.1+. Model provider extras belong to your application; the adapter depends on the slim framework package.
+For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, anyio 4.7+, and the public Pushary SDK 2.2+. Model provider extras belong to your application; the adapter depends on the slim framework package.
