@@ -78,7 +78,7 @@ if isinstance(result.output, DeferredToolRequests):
 
 `create_reviews` creates a decision for each deferred call and returns immediately, so the human wait holds no worker open.
 
-`refund_order_once` is your application's idempotent business operation. `authenticated_customer` comes from your server's authentication, never a model argument. Set `PUSHARY_API_KEY` on the server or pass `api_key=` to the helpers. Live end-user delivery requires Partner access and an enrolled customer; `connect(external_id)` returns the SDK's single-use enrollment link. Use a customer-bound key when available and keep it scoped to that same customer.
+`refund_order_once` is your application's idempotent business operation. `authenticated_customer` comes from your server's authentication, never a model argument. Set `PUSHARY_API_KEY` on the server or pass `api_key=` to the helpers. Live end-user delivery requires Partner access and an enrolled customer. Call `connect(external_id)` with a full-access key on your trusted backend to obtain the SDK's single-use enrollment link. Use a customer-bound key for runtime decisions and keep it scoped to that same customer; it cannot enroll devices.
 
 Save the original run's message history, deferred requests, and `batch.model_dump_json()` in trusted storage **before scheduling further work**. Persist the original run ID; a retry of decision creation must reuse that ID, the same customer, and the same original requests. Changed arguments produce a new decision rather than reusing approval.
 
