@@ -2,13 +2,21 @@
 
 Phone approvals for Pydantic AI agents. Your agent asks, your user taps Approve or Deny.
 
-[Published on PyPI](https://pypi.org/project/pushary-pydantic-ai/) · [Integration guide](https://pushary.com/docs/agents/adapters?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme)
+[Published on PyPI](https://pypi.org/project/pushary-pydantic-ai/) · [Integration guide](https://pushary.com/docs/agents/adapters?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme#pydantic-ai)
 
 ## What you need
 
 - A Pushary Partner plan, from $99 a month. [Start the trial](https://pushary.com/sign-up?from=agent&plan=partner&utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=partner-start).
 - An API key from [Partner onboarding](https://pushary.com/onboarding/partner?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=partner-start), set as `PUSHARY_API_KEY`.
 - Your users install the free Pushary app ([iPhone](https://apps.apple.com/us/app/pushary/id6785677563), [Android](https://play.google.com/store/apps/details?id=com.pushary.app)). They never sign up or pay.
+
+## What your customer gets
+
+1. They open your connect link once. It shows your product's name and logo and connects their phone.
+2. When the model calls a tool marked `requires_approval=True`, a push notification titled with your product name arrives, such as **Acme needs your approval**. It shows the tool name and a short view of its arguments, and the decision page shows every argument.
+3. They tap Approve or Deny. Approve runs the tool in the same run. Deny, or no answer in time, returns a denial the model can read.
+
+Pushary hosts the phone delivery, the decision record and the [audit log](https://pushary.com/docs/agents/audit-log?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme). Your app keeps its own sign-in, the Pydantic AI run and its message history, and the tools themselves.
 
 ## Quick start
 
@@ -153,3 +161,11 @@ The monorepo owns this package and its public-mirror workflow. The mirror CI tes
 ## Runtime requirements
 
 For local development, run `uv pip install -e .` from this package directory. Requires Python 3.10+, Pydantic AI 2.42+, anyio 4.7+, and the public Pushary SDK 2.2+. Model provider extras belong to your application; the adapter depends on the slim framework package.
+
+## Links
+
+- [Human in the loop for AI agents](https://pushary.com/human-in-the-loop?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme), with one page per framework.
+- [Pydantic AI section of the adapters guide](https://pushary.com/docs/agents/adapters?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme#pydantic-ai) in the Pushary docs.
+- [Partner plan](https://pushary.com/partners?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme), from $99 a month. All plans are on the [pricing page](https://pushary.com/pricing?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme).
+- [Browser demo](https://pushary.com/try?utm_source=github&utm_medium=oss-adapter&utm_campaign=pushary-pydantic-ai&utm_content=readme) of one approval.
+- Other adapters: [OpenAI Agents SDK](https://github.com/Pushary/pushary-openai-agents), [LangGraph](https://github.com/Pushary/pushary-langgraph), [CrewAI](https://github.com/Pushary/pushary-crewai).
