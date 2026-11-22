@@ -8,13 +8,14 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 from pydantic_ai import Agent, DeferredToolRequests, ToolDenied, models
 from pydantic_ai.messages import (
-    ModelMessagesTypeAdapter, ModelResponse, TextPart, ToolCallPart, ToolReturnPart,
+    ModelMessagesTypeAdapter, ModelResponse, TextPart, ToolCallPart,
 )
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pushary import PusharyServer
 
 from pushary_pydantic_ai import HumanQuestion, ReviewBatch, create_reviews, pushary_tool, resolve_reviews
+from tests.model_messages import tool_returns
 
 models.ALLOW_MODEL_REQUESTS = False
 API_KEY = "pk_test.sk_test"
@@ -105,7 +106,7 @@ def test_real_question_tool_returns_typed_data_never_approves_another_tool(kind,
     args = question_request(kind, options).calls[0].args_as_dict()
 
     def model(messages, info):
-        if any(isinstance(part, ToolReturnPart) for message in messages for part in message.parts):
+        if tool_returns(messages):
             return ModelResponse(parts=[TextPart("Answered")])
         return ModelResponse(parts=[ToolCallPart("ask_human", args, "question_call")])
 

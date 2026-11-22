@@ -16,13 +16,14 @@ from pushary import PusharyError
 from pydantic_ai import Agent, CallDeferred, DeferredToolRequests, RunContext, models
 from pydantic_ai.exceptions import UserError
 from pydantic_ai.messages import (
-    ModelMessage, ModelResponse, RetryPromptPart, TextPart, ToolCallPart, ToolReturnPart,
+    ModelMessage, ModelResponse, TextPart, ToolCallPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
 from pushary_pydantic_ai import ARGUMENTS_TOO_LONG, PusharyApprovals, _wait_in_thread, pushary_tool
+from tests.model_messages import retries, tool_returns
 
 models.ALLOW_MODEL_REQUESTS = False
 API_KEY = "pk_test.sk_test"
@@ -80,10 +81,6 @@ def refund_agent(
         return "refunded"
 
     return agent, executions
-
-
-def tool_returns(messages: list[ModelMessage]) -> list[ToolReturnPart]:
-    return [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
 
 
 def test_a_yes_on_the_phone_runs_the_tool_inside_the_same_run() -> None:
@@ -155,7 +152,7 @@ def test_every_approval_in_one_turn_is_asked() -> None:
 def call_then_finish(tool_name: str, args: dict[str, Any]) -> FunctionModel:
     def respond(messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
         returned = tool_returns(messages)
-        retried = [part for message in messages for part in message.parts if isinstance(part, RetryPromptPart)]
+        retried = retries(messages)
         if returned:
             return ModelResponse(parts=[TextPart(str(returned[-1].content))])
         if retried:
@@ -194,6 +191,24 @@ def test_an_unreadable_question_goes_back_to_the_model_without_paging_anyone() -
         )
         result = agent.run_sync("Plan the release")
     assert result.output == "gave up"
+    assert decisions(requests) == []
+
+
+def test_a_question_only_pushary_can_read_wrong_goes_back_to_the_model_without_paging_anyone() -> None:
+    with phone(["only"]) as requests:
+        agent: Agent[None, str] = Agent(
+            ask_then_finish({"question": "Pick one?", "kind": "select", "options": ["only"]}),
+            capabilities=[approvals()],
+        )
+
+        @agent.tool_plain
+        def ask_human(question: str, kind: str = "confirm", options: list[str] | None = None) -> str:
+            raise CallDeferred()
+
+        result = agent.run_sync("Plan the release")
+    assert result.output == "gave up"
+    [retry] = retries(result.all_messages())
+    assert "The question could not be sent" in str(getattr(retry, "content", ""))
     assert decisions(requests) == []
 
 
